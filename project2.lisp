@@ -9,12 +9,14 @@
         expr => list, an expression to run with the given values
     RETURNS:
         The number obtained from evaluating the list"
-    (progn
-        (print expr) 
-        (setq x (nth 0 vals))
-        (setq y (nth 1 vals))
-        (setq z (nth 2 vals))
-        (eval expr)))
+    (print "X Y Z: ")
+    (print vals)
+    (print "Expression: ")
+    (print expr) 
+    (setq x (nth 0 vals))
+    (setq y (nth 1 vals))
+    (setq z (nth 2 vals))
+    (eval expr))
 
 (defun random-el (seq)
     "Returns a random element from the given sequence using nth and random
@@ -41,7 +43,6 @@
           (use-var nil)
           (expr-piece nil)
           (expr '()))
-        (progn
             (if (< expr-len 1)
                 (setf expr-len (+ expr-len 2))) ; minimum length 2 (to ensure expression is valid)
             (loop while (<= (length expr) expr-len) 
@@ -57,7 +58,7 @@
                             (setf expr-piece (random-el nums))))
                 collect expr-piece into expr
                 finally 
-                    (return-from gen-expr expr)))))
+                    (return-from gen-expr expr))))
 
 (defun choose-cross-pt (parent)
     "Returns a list of numbers representing where to crossover in the given parent.
@@ -69,11 +70,10 @@
         A list representing the point to crossover at, 
         potentially at a sub-list depth equal to the length of the list."
     (let ((pts (list (random (length parent)))))
-        (progn
-            (print parent) 
-            (if (and (listp (nth (car pts) parent)) (<= (random 10) 4)) 
-                (setf pts (append pts (choose-cross-pt (nth (car pts) parent)))))
-            (return-from choose-cross-pt pts))))
+        (print parent) 
+        (if (and (listp (nth (car pts) parent)) (<= (random 10) 4)) 
+            (setf pts (append pts (choose-cross-pt (nth (car pts) parent)))))
+        (return-from choose-cross-pt pts)))
 
 (defun validate-gen-expr ()
     "Test function to verify that the function gen-expr is creating valid expressions"
