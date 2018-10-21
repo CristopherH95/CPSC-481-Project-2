@@ -59,7 +59,23 @@
                 finally 
                     (return-from gen-expr expr)))))
 
+(defun choose-cross-pt (parent)
+    "Returns a list of numbers representing where to crossover in the given parent.
+    If the list is longer than 1 element, then each element after the first is a position in a sub-list
+    after the first element.
+    PARAMETERS:
+        parent -> list, the list to choose a crossover point in
+    RETURNS:
+        A list representing the point to crossover at, 
+        potentially at a sub-list depth equal to the length of the list."
+    (let ((pts (list (random (length parent)))))
+        (progn
+            (print parent) 
+            (if (and (listp (nth (car pts) parent)) (<= (random 10) 4)) 
+                (setf pts (append pts (choose-cross-pt (nth (car pts) parent)))))
+            (return-from choose-cross-pt pts))))
+
 (defun validate-gen-expr ()
     "Test function to verify that the function gen-expr is creating valid expressions"
     (loop for i from 1 to 100
-        do (print (test-expr (list 1 1 1) (gen-expr)))))
+        do (print (test-expr (list (random 10) (random 10) (random 10)) (gen-expr)))))
