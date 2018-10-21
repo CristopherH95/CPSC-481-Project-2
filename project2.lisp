@@ -50,9 +50,9 @@
                 do (setf use-var (random 10))
                 do (cond
                         ((< (length expr) 1) (setf expr-piece (random-el ops))) ; only first elements are operators 
-                        ((and (<= make-sub 3) (< sub-count max-sub))    ; 30% chance to insert sub-list
+                        ((and (<= make-sub 2) (< sub-count max-sub))    ; 30% chance to insert sub-list
                             (setf expr-piece (gen-expr max-len max-sub (+ sub-count 1))))
-                        ((<= use-var 5)     ; 50% chance to insert a variable
+                        ((<= use-var 4)     ; 50% chance to insert a variable
                             (setf expr-piece (random-el vars)))
                         (T                  ; default insert a number
                             (setf expr-piece (random-el nums))))
@@ -65,7 +65,7 @@
     If the list is longer than 1 element, then each element after the first is a position in a sub-list
     after the first element.
     PARAMETERS:
-        parent -> list, the list to choose a crossover point in
+        parent => list, the list to choose a crossover point in
     RETURNS:
         A list representing the point to crossover at, 
         potentially at a sub-list depth equal to the length of the list."
