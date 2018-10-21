@@ -68,7 +68,9 @@
         parent => list, the list to choose a crossover point in
     RETURNS:
         A list representing the point to crossover at, 
-        potentially at a sub-list depth equal to the length of the list."
+        potentially at a sub-list depth equal to the length of the list.
+        For example: (1 2) means crossover at the 3rd element of the 2nd element (a sub-list)
+                     in the list."
     (let ((pts (list (random (length parent)))))
         (print parent) 
         (if (and (listp (nth (car pts) parent)) (<= (random 10) 4)) 
