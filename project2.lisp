@@ -276,18 +276,21 @@
         finally (return-from crossover (remove nil new-kid)))))
 
 (defun test-cross ()
+  "test function to view the crossover of random expressions"
   (let* ((pop-test (init-pop))
          (parent_1 (nth (random (length pop-test)) pop-test))
          (parent_2 (nth (random (length pop-test)) pop-test)))
       (print (crossover parent_1 parent_2))))
 
 (defun new_kid (parent_1 parent_2)
+  "Create a new kid and randomly apply mutation"
   (let ((kid (crossover parent_1 parent_2)))
     (if (< (random 100) mutation_rate)
       (setf kid (mutate_critter kid)))
     kid))
 
 (defun test_fun ()
+  "Test version of genetic programming main function"
   (let ((pop-curr (init-pop))
         (pop-next '())
         (parent_1 nil)
@@ -304,7 +307,7 @@
          (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))
          (push (car pop-scored) most-fit)
          (setq pop-top (get_pop_from_scored pop-scored))
-         (setq pop-top (subseq pop-top 0 (floor (length pop-top) 2)))
+         (setq pop-top (subseq pop-top 0 (floor (length pop-top) 4)))
          (print "generation scored")
          (print pop-scored)
          (setq pop-next '())
