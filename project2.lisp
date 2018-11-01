@@ -20,9 +20,9 @@
 ;(setq generations (parse-integer generations))
 ;(format t "~d ~d ~d ~d ~d ~d" x y z output pop-size generations))
 
-(setq pop-size 50)
-(setq generations 50)
-(setq samples (list '(0 -2 1 -16)
+(setq pop-size 50)  ; N of 50 from requirements
+(setq generations 50) ; 50 generations from requirements
+(setq samples (list '(0 -2 1 -16) ; samples from requirements
                     '(-4 -5 -3 58)
                     '(9 8 -6 72)
                     '(9 -7 5 113)
@@ -32,7 +32,7 @@
                     '(-5 3 -7 -24)
                     '(-6 -5 9 -18)
                     '(1 0 2 2)))
-(setq mutation_rate 50)
+(setq mutation_rate 50) ; determines likelihood a critter will be mutated
 
 ;Declare the random seed
 (setf *random-state* (make-random-state t))
@@ -259,20 +259,22 @@
       (loop 
         for i from (length parent_1) downto 0
         do (if (not (= i cross-pt-1))
-              (push (nth i parent_1) new-kid)
-              (loop
-              for j from cross-pt-2 downto 0
-              do (push (nth j parent_2) cross-part)
-              finally (if (and (not (= i 0)) (member (car cross-part) ops))
-                        (progn
-                          (if (= (length cross-part) 1)
-                            (progn 
-                              (push 1 cross-part)
-                              (setf cross-part (reverse cross-part))))
-                          (push cross-part new-kid))
-                      (loop 
-                        for i from (length cross-part) downto 0 
-                        do (push (nth i cross-part) new-kid)))))
+              (push (nth i parent_1) new-kid) ; if not at cross point copy element from parent
+              (loop ; if at cross point, switch over to other parent
+                for j from cross-pt-2 downto 0
+                do (push (nth j parent_2) cross-part)
+                ; if cross part begins with operator
+                ; and the current position isn't 0, then add as a sublist
+                finally (if (and (not (= i 0)) (member (car cross-part) ops))
+                          (progn
+                            (if (= (length cross-part) 1) 
+                              (progn 
+                                (push 1 cross-part)
+                                (setf cross-part (reverse cross-part))))
+                            (push cross-part new-kid))
+                        (loop 
+                          for i from (length cross-part) downto 0 
+                          do (push (nth i cross-part) new-kid)))))
         finally (return-from crossover (remove nil new-kid)))))
 
 (defun test-cross ()
@@ -300,28 +302,19 @@
         (most-fit '())
         (generation-count 0))
     (loop while (< generation-count generations)
-      do (incf generation-count)
-         (print "generation start")
-         (print pop-curr)
-         (print (length pop-curr))
-         (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))
-         (push (car pop-scored) most-fit)
-         (setq pop-top (get_pop_from_scored pop-scored))
+      do (incf generation-count)  ; increment generation counter
+         (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))  ; score population, sort by scores
+         (push (car pop-scored) most-fit) ; save most fit
+         (setq pop-top (get_pop_from_scored pop-scored))  ; take top 25% 
          (setq pop-top (subseq pop-top 0 (floor (length pop-top) 4)))
-         (print "generation scored")
-         (print pop-scored)
-         (setq pop-next '())
-         (loop while (< (- (length pop-next) 2) pop-size)
-            do  (setf parent_1 (nth (random (length pop-top)) pop-top))
-                (setf parent_2 (nth (random (length pop-top)) pop-top))
-                (loop while (equal parent_1 parent_2) 
+         (setq pop-next '())  ; start with empty new pop
+         (loop while (< (+ (length pop-next) 1) pop-size)
+            do  (setf parent_1 (nth (random (length pop-top)) pop-top)) ; create two children 
+                (setf parent_2 (nth (random (length pop-top)) pop-top)) ; parents from top 25%
+                (loop while (equal parent_1 parent_2)   ; ensure that the parents are not the same
                   do (setq parent_2 (nth (random (length pop-top)) pop-top)))
-                (push (new_kid parent_1 parent_2) pop-next)
+                (push (new_kid parent_1 parent_2) pop-next) ; add kids to next pop
                 (push (new_kid parent_2 parent_1) pop-next))
-          (print "pop-next:")
-          (print pop-next)
-          (setq pop-curr pop-next)
-          (print "generation end")
-          (print pop-curr))
+          (setq pop-curr pop-next)) ; set next pop as current pop
       (print "best expressions:")
       (print most-fit)))
