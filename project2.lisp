@@ -256,7 +256,7 @@
                 do (setf use-var (random 10))
                 do (cond
                         ((< (length expr) 1) (setf expr-piece (random-el ops))) ; only first elements are operators 
-                        ((and (<= make-sub 2) (< sub-count max-sub))    ; 30% chance to insert sub-list
+                        ((and (<= make-sub 4) (< sub-count max-sub))    ; 50% chance to insert sub-list
                             (setf expr-piece (gen-expr max-len max-sub (+ sub-count 1))))
                         ((<= use-var 4)     ; 50% chance to insert a variable
                             (setf expr-piece (random-el vars)))
@@ -349,12 +349,12 @@
   ;; (print "get_crossed")
   ;; (print parent_1)
   ;; (print parent_2)
-  ;; (let ((pt_1 (random_tree_cell parent_1))
-  ;;       (pt_2 (random_tree_cell parent_2)))
-  ;;   (print pt_1)
-  ;;   (print pt_2)
-  ;;   (cross parent_1 pt_1 pt_2)))
-  (test_cross parent_1 parent_2))
+  (let ((pt_1 (random_tree_cell parent_1))
+        (pt_2 (random_tree_cell parent_2)))
+    ;; (print pt_1)
+    ;; (print pt_2)
+    (make_kid parent_1 pt_1 pt_2)))
+  ;; (test_cross parent_1 parent_2))
 
 (defun test-cross ()
   "test function to view the crossover of random expressions"
@@ -366,9 +366,22 @@
 (defun new_kid (parent_1 parent_2)
   "Create a new kid and randomly apply mutation"
   (let ((kid (get_crossed parent_1 parent_2)))
-    (if (< (random 100) mutation_rate)
-      (setf kid (mutate_critter kid)))
+    (setf kid (mutate_critter kid))
     kid))
+
+(defun display_pop_extremes (scored_pop)
+  (print "Best/Worst")
+  (print (car scored_pop))
+  (print (last scored_pop)))
+
+(defun display_gen_average (scored_pop)
+  (print "Average Score")
+  (let ((summed_scores 0)
+        (expr_score 0))
+    (loop for expr in scored_pop
+      do (setq expr_score (nth 0 expr))
+      sum expr_score into summed_scores
+      finally (print (float (/ summed_scores (length scored_pop)))))))
 
 (defun test_fun ()
   "Test version of genetic programming main function"
@@ -384,10 +397,13 @@
       do (incf generation-count)  ; increment generation counter
          (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))  ; score population, sort by scores
          (push (car pop-scored) most-fit) ; save most fit
-         (setq pop-top (get_pop_from_scored pop-scored))  ; take top 25% 
+         (setq pop-top (get_pop_from_scored pop-scored))  ; take top 50% 
          (format T "Generation ~D" generation-count)
+         (display_pop_extremes pop-scored)
+         (display_gen_average pop-scored)
+         (setq pop-top (subseq pop-top 0 (floor (length pop-top) 2)))
+         (print "expressions")
          (print pop-scored)
-         (setq pop-top (subseq pop-top 0 (floor (length pop-top) 4)))
          (setq pop-next '())  ; start with empty new pop
          (loop while (< (+ (length pop-next) 1) pop-size)
             do  (setf parent_1 (nth (random (length pop-top)) pop-top)) ; create two children 
