@@ -1,8 +1,5 @@
 
 
-
-
-
 ;(main pop-size generations)
 ;(setq pop-size 50)
 ;(setq args *args*)
@@ -20,9 +17,9 @@
 ;(setq generations (parse-integer generations))
 ;(format t "~d ~d ~d ~d ~d ~d" x y z output pop-size generations))
 
-(setq pop-size 50)  ; N of 50 from requirements
-(setq generations 50) ; 50 generations from requirements
-(setq samples (list '(0 -2 1 -16) ; samples from requirements
+(setq pop-size 50)
+(setq generations 50)
+(setq samples (list '(0 -2 1 -16)
                     '(-4 -5 -3 58)
                     '(9 8 -6 72)
                     '(9 -7 5 113)
@@ -32,14 +29,31 @@
                     '(-5 3 -7 -24)
                     '(-6 -5 9 -18)
                     '(1 0 2 2)))
-(setq mutation_rate 50) ; determines likelihood a critter will be mutated
+(setq mutation_rate 75)
+(setq vars '(x y z))
+(setq nums '(-9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 8 9))
+(setq ops '(+ - *))
 
 ;Declare the random seed
 (setf *random-state* (make-random-state t))
 
 ;;; PROVIDED HELPER FUNCTIONS ;;;
+
+(defun flatten (obj)
+  (do* ((result (list obj))
+        (node result))
+       ((null node) (delete nil result))
+    (cond ((consp (car node))
+           (when (cdar node) (push (cdar node) (cdr node)))
+           (setf (car node) (caar node)))
+          (t (setf node (cdr node))))))
+
 (defun tree_nth_cell (rnth rtree)
   "Return the DFS N-th cell in the given tree: 1-based."
+  ;; (declare (optimize (safety 3)))
+  ;; (print "tree_nth_cell")
+  ;; (print rnth)
+  ;; (print rtree)
   (let ((size (cell_count rtree)))
     ;;(print (list :dbga rnth size (car rtree)))
     (cond
@@ -64,10 +78,11 @@
             (- rnth size1) ;; Account for skipping car subtree.
             (cdr rtree))))))))) ;; Skip car subtree.
 
-
-
 (defun tree_nth (rnth rtree)
   "Return the DFS N-th subtree/elt in the given tree."
+  ;; (write "tree nth w/")
+  ;; (print rnth)
+  ;; (print rtree)
   (let ((size (cell_count rtree)))
     ;; (print (list :dbga rnth size (car rtree)))
     (cond
@@ -209,12 +224,54 @@
         (create_random_child child))
     (return-from create_random_child child)) ;Return our critter
 
+(defun random-el (seq)
+    "Returns a random element from the given sequence using nth and random
+    PARAMETERS:
+        seq => sequence, accessible by nth, to choose an element from
+    RETURNS:
+        A single, randomly selected, element from the list"
+    (nth (random (length seq)) seq))
+
+(defun gen-expr (&optional (max-len 7) (max-sub 3) (sub-count 0))
+    "Generates a random expression of a given maximum element length 
+    (counting a sub-list as 1) and a maximum number of sub-lists.
+    OPTIONAL PARAMETERS:
+        max-len => number, represents max expression length
+        max-sub => number, represents max number of sub-lists
+        sub-count => number, counter for number of sub-lists
+    RETURNS:
+        A list which is a random expression which may include:
+            X, Y, and/or Z
+            the numbers -9 - 9
+            the operators +, -, and/or *"
+    (let ((expr-len (random max-len))
+          (make-sub nil)
+          (use-var nil)
+          (expr-piece nil)
+          (expr '()))
+            (if (< expr-len 1)
+                (setf expr-len (+ expr-len 2))) ; minimum length 2 (to ensure expression is valid)
+            (loop while (<= (length expr) expr-len) 
+                do (setf make-sub (random 10))
+                do (setf use-var (random 10))
+                do (cond
+                        ((< (length expr) 1) (setf expr-piece (random-el ops))) ; only first elements are operators 
+                        ((and (<= make-sub 2) (< sub-count max-sub))    ; 30% chance to insert sub-list
+                            (setf expr-piece (gen-expr max-len max-sub (+ sub-count 1))))
+                        ((<= use-var 4)     ; 50% chance to insert a variable
+                            (setf expr-piece (random-el vars)))
+                        (T                  ; default insert a number
+                            (setf expr-piece (random-el nums))))
+                collect expr-piece into expr
+                finally 
+                    (return-from gen-expr expr))))
+
 (defun init-pop ()
   "Initialize a population of expressions"
   (let ((e-pop '())
         (n-expr '()))
     (loop while (< (length e-pop) pop-size)
-      do (setf n-expr (create_random_child '()))
+      do (setf n-expr (gen-expr))
       collect n-expr into e-pop
       finally (return-from init-pop e-pop))))
 
@@ -230,52 +287,74 @@
       sum test-delta into fitness
       finally (return-from get_fitness fitness))))
 
-(defun choose-cross-pt (parent)
-    "Choose a random point in the parent to crossover"
-    (random (length parent)))
+(defun count_lists (target)
+  (print "count_lists")
+  (let ((counter 1)
+        (c_list 0))
+    (loop for el in target
+      do (if (listp el)
+            (setq c_list 1)
+          (setq c_list 0))
+          (print el)
+          (print counter)
+          (setq counter (+ counter c_list))
+      finally (return-from count_lists counter))))
 
-(defun copy-from-point (subject point)
-  "Copy the elements from the subject, starting at the given point"
-  (let ((result '())
-        (item nil))
-    (loop
-      for i from point to (length subject)
-      do (setq item (nth i subject))
-      collect item into result
-      finally (return-from copy-from-point result))))
+(defun nth_list (nth_val target)
+  ;; (print "nth_val")
+  ;; (print nth_val)
+  (if (= nth_val 1)
+      (return-from nth_list target))
+  (let ((counter 1))
+    (loop for el in target
+      do  (if (listp el)
+            (setq counter (1+ counter)))
+          (if (= counter nth_val)
+            (return-from nth_list el)))))
 
-(defun crossover (parent_1 parent_2)
-  "Crossover between two parent expressions
-    Note: if the crossover from parent_2 starts with an operator 
-          (and the crossover point in parent_1 is not at 0)
-          then the crossover will be encapsulated in a sub-list for closure purposes.
-          In addition, if the same applies but the crossover is also only one element long,
-          then a 1 will be added to the crossover sub-list to maintain closure."
-  (let* ((cross-pt-1 (choose-cross-pt parent_1))
-         (cross-pt-2 (choose-cross-pt parent_2))
-         (new-kid nil)
-         (cross-part '())
-         (ops '(+ - *)))
-      (loop 
-        for i from (length parent_1) downto 0
-        do (if (not (= i cross-pt-1))
-              (push (nth i parent_1) new-kid) ; if not at cross point copy element from parent
-              (loop ; if at cross point, switch over to other parent
-                for j from cross-pt-2 downto 0
-                do (push (nth j parent_2) cross-part)
-                ; if cross part begins with operator
-                ; and the current position isn't 0, then add as a sublist
-                finally (if (and (not (= i 0)) (member (car cross-part) ops))
-                          (progn
-                            (if (= (length cross-part) 1) 
-                              (progn 
-                                (push 1 cross-part)
-                                (setf cross-part (reverse cross-part))))
-                            (push cross-part new-kid))
-                        (loop 
-                          for i from (length cross-part) downto 0 
-                          do (push (nth i cross-part) new-kid)))))
-        finally (return-from crossover (remove nil new-kid)))))
+(defun random_from_cdr (subject)
+  "Get a random element that is not the first in the list"
+  (let ((nth_val (random (length subject))))
+    (if (<= nth_val 0)
+      (setf nth_val (1+ nth_val)))
+    (nth nth_val subject)))
+
+(defun test_cross (parent_1 parent_2)
+  ;; (print "test_cross")
+  (let ((n_sub (random_from_cdr parent_2))
+        (nth_val (random (length parent_1)))
+        (n_kid (copy-tree parent_1)))
+      (if (<= nth_val 0)
+        (setf nth_val (1+ nth_val)))
+      (setf (nth nth_val n_kid) n_sub)
+      n_kid))
+
+(defun deep-copy (source)
+  "Get a deep copy of the given structure"
+  (write "deep-copy")
+  (cond ((not (listp source)) source)
+        (T (let ((left (deep-copy (car source)))
+                 (right (deep-copy (cdr source))))
+              (cons left right)))))
+
+(defun cross (source spot n_sub)
+  "Cross the source expression with a new sub-expression at the spot"
+  (cond ((not (listp source)) source)
+        ((eq source spot) n_sub)
+        (T (let ((left (cross (car source) spot n_sub))
+                 (right (cross (cdr source) spot n_sub)))
+              (cons left right)))))
+
+(defun get_crossed (parent_1 parent_2)
+  ;; (print "get_crossed")
+  ;; (print parent_1)
+  ;; (print parent_2)
+  ;; (let ((pt_1 (random_tree_cell parent_1))
+  ;;       (pt_2 (random_tree_cell parent_2)))
+  ;;   (print pt_1)
+  ;;   (print pt_2)
+  ;;   (cross parent_1 pt_1 pt_2)))
+  (test_cross parent_1 parent_2))
 
 (defun test-cross ()
   "test function to view the crossover of random expressions"
@@ -286,7 +365,7 @@
 
 (defun new_kid (parent_1 parent_2)
   "Create a new kid and randomly apply mutation"
-  (let ((kid (crossover parent_1 parent_2)))
+  (let ((kid (get_crossed parent_1 parent_2)))
     (if (< (random 100) mutation_rate)
       (setf kid (mutate_critter kid)))
     kid))
@@ -306,6 +385,8 @@
          (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))  ; score population, sort by scores
          (push (car pop-scored) most-fit) ; save most fit
          (setq pop-top (get_pop_from_scored pop-scored))  ; take top 25% 
+         (format T "Generation ~D" generation-count)
+         (print pop-scored)
          (setq pop-top (subseq pop-top 0 (floor (length pop-top) 4)))
          (setq pop-next '())  ; start with empty new pop
          (loop while (< (+ (length pop-next) 1) pop-size)
