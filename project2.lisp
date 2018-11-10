@@ -232,7 +232,7 @@
         A single, randomly selected, element from the list"
     (nth (random (length seq)) seq))
 
-(defun gen-expr (&optional (max-len 7) (max-sub 3) (sub-count 0))
+(defun gen-expr (&optional (max-len 7) (max-sub 5) (sub-count 0))
     "Generates a random expression of a given maximum element length 
     (counting a sub-list as 1) and a maximum number of sub-lists.
     OPTIONAL PARAMETERS:
@@ -381,7 +381,9 @@
     (loop for expr in scored_pop
       do (setq expr_score (nth 0 expr))
       sum expr_score into summed_scores
-      finally (print (float (/ summed_scores (length scored_pop)))))))
+      finally (print (handler-case ; if score is too high for float representation, leave as fraction
+                        (float (/ summed_scores (length scored_pop)))
+                        (floating-point-overflow () (/ summed_scores (length scored_pop))))))))
 
 (defun test_fun ()
   "Test version of genetic programming main function"
