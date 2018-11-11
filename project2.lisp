@@ -1,21 +1,10 @@
+;;;; project2.lisp
+;;;; Written by: Cristopher Hernandez & Suyash Singh
+;;;; Contact: cristopherh@csu.fullerton.edu, 2012suyash93@gmail.com
+;;;; Defines helper functions and the main function for running a 50 generation
+;;;; genetic programming algorithm for modeling a 3D surface.
 
-
-;(main pop-size generations)
-;(setq pop-size 50)
-;(setq args *args*)
-;(setq x (car args))
-;(setq y (car (cdr args)))
-;(setq z (car (cdr(cdr args))))
-;(setq output (car(cdr(cdr(cdr args)))))
-;(setq pop-size (car(cdr(cdr(cdr(cdr args))))))
-;(setq generations (car(cdr(cdr(cdr(cdr(cdr args)))))))
-;(setq x (parse-integer x))
-;(setq y (parse-integer y))
-;(setq z (parse-integer z))
-;(setq output (parse-integer output))
-;(setq pop-size (parse-integer pop-size))
-;(setq generations (parse-integer generations))
-;(format t "~d ~d ~d ~d ~d ~d" x y z output pop-size generations))
+;;; Constant parameters
 
 (setq pop-size 50)
 (setq generations 50)
@@ -34,16 +23,10 @@
 (setq nums '(-9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 8 9))
 (setq ops '(+ - *))
 
-;Declare the random seed
+; Random seed
 (setf *random-state* (make-random-state t))
 
 ;;; PROVIDED HELPER FUNCTIONS ;;;
-
-(defun flatten (li)
-  "Flatten a multi-dimensional list"
-  (cond ((null li) nil)
-        ((atom li) (list li))
-        (T (loop for el in li appending (flatten el)))))
 
 (defun tree_nth_cell (rnth rtree)
   "Return the DFS N-th cell in the given tree: 1-based."
@@ -105,27 +88,14 @@
                 (- rnth size1) ;; Account for skipping car subtree.
                 (cdr rtree))))))))) ;; Skip car subtree.
 
-;; (defun random_tree_cell (rtree)
-;;  "Return random cell in the tree."
-;;   (setf rtree (flatten rtree))
-;;   ;(write "TREE:")
-;;   ;(write rtree)
-;;   ;(terpri)
-;;  (let* ((size (cell_count rtree))
-;;  (rx (1+ (random (1- size)))) ;; Avoid 1st cell (the whole tree).
-;;  (nth (1+ rx)) ;; Incr cuz our fcn is 1-based, not 0-based.
-;;  (spot (tree_nth_cell nth rtree)))
-;;  ;; (print (list :dbg size nth spot))
-;;  spot))
-
-(defun random-tree-cell (rtree)  
+(defun random_tree_cell (rtree)  
   "Return random cell in the tree, but not the whole tree."  
-  (let* ((size (cell-count rtree))         
+  (let* ((size (cell_count rtree))         
     (rx (1+ (random (1- size)))) 
     ;; Avoid 1st cell (the whole tree).         
     (nth (1+ rx)) 
     ;; Incr cuz our fcn is 1-based, not 0-based.         
-    (spot (tree-nth-cell nth rtree)))    
+    (spot (tree_nth_cell nth rtree)))    
     ;; (print (list :dbg size nth spot))   
      spot)) 
 
@@ -175,46 +145,37 @@
  (mapcar #'cadr rscored-pop))
 
 ;;; END PROVIDED FUNCTIONS ;;;
-
+;;; Genetic programming functions
 
 (defun mutate_critter (critter)
-    "We pass in a critter to mutate, changing either than operator or an operand"
-    (setq new_critter critter) ;Create a copy of our critter
-    (setq change_pos (random (length critter))) ;Randomly select the mutation point
-    (setq op (random 3)) ;Randomly select the operation to change if selected
-    (setq curnum (- (random 22) 9)) ;Randomly select the operand to replace old if selected
-    (cond 
-        ((= change_pos 0) ;If selected point is 0 we change the operator with a randomly selected one
-        (if (= op 0) (setq newop '+))
-        (if (= op 1) (setq newop '-))
-        (if (= op 2) (setq newop '*))
-        (setq new_critter (append (list newop) (cdr critter)))) ;Set the new critter to be prepended by the new operation
-        ((> change_pos 0);If the position is not the operator we change with a number or variable at random
-            (cond
-            ((= curnum -10) (setf curnum 'x ))
-            ((= curnum -11) (setf curnum 'y ))
-            ((= curnum -12) (setf curnum 'z ))
-            ((= curnum 10) (setf curnum 'x ))
-            ((= curnum 11) (setf curnum 'y ))
-            ((= curnum 12) (setf curnum 'z )))
-            (setf (nth change_pos new_critter) curnum))) ;Set the new operand
-    (return-from mutate_critter new_critter) ;Return the resulting new critter
-    )
-
-(defun test_mutate (critter)
   "Randomly mutate an element (including sublist elements) in a given critter"
-  ;; (print "mutating")
-  ;; (print critter)
   (let ((new_critter (copy-list critter)) ; copy critter
         (change_pos (random (length critter)))) ; get change pos
     (cond 
       ((= change_pos 0) (setf (nth change_pos new_critter) (random-el ops)))  ; change pos is start, so only ops allowed
       ((listp (nth change_pos new_critter)) ; change pos is a list, so recurse
-        (setf (nth change_pos new_critter) (test_mutate (nth change_pos new_critter))))
+        (setf (nth change_pos new_critter) (mutate_critter (nth change_pos new_critter))))
       (T (if (< (random 10) 4)  ; 50% chance to change to a random variable or number
             (setf (nth change_pos new_critter) (random-el vars))
           (setf (nth change_pos new_critter) (random-el nums)))))
     new_critter)) ; return new critter
+
+(defun fix_expression (expr)
+  "Check the given expression and ensure it is properly formed"
+  (let ((test_expr (copy-list expr)))
+    (loop for i from 0 upto (- (length test_expr) 1)
+      do (cond
+             ((and (= i 0) (not (member (nth i test_expr) ops)))  ; first element not an op, so add one
+                (setq test_expr (append (list (random-el ops)) test_expr)))
+             ((and (= i 0) (= (length test_expr) 1))  ; list is only an operator, so add a 1
+                (setq test_expr (append test_expr '(1))))
+             ((and (not (= i 0)) (member (nth i test_expr) ops))  ; operator not in 0 position, so swap it out
+                (if (< (random 10) 4) ; 50/50 chance of variable or number
+                    (setf (nth i test_expr) (random-el vars))
+                  (setf (nth i test_expr) (random-el nums))))
+             ((listp (nth i test_expr)) ; element is a list, so recurse and check the sub-list 
+                (setf (nth i test_expr) (fix_expression (nth i test_expr)))))
+      finally (return-from fix_expression test_expr))))
 
 (defun create_random_child (passed)
     "Create a child at random"
@@ -308,96 +269,28 @@
       sum test-delta into fitness
       finally (return-from get_fitness fitness))))
 
-(defun count_lists (target)
-  (print "count_lists")
-  (let ((counter 1)
-        (c_list 0))
-    (loop for el in target
-      do (if (listp el)
-            (setq c_list 1)
-          (setq c_list 0))
-          (print el)
-          (print counter)
-          (setq counter (+ counter c_list))
-      finally (return-from count_lists counter))))
-
-(defun nth_list (nth_val target)
-  ;; (print "nth_val")
-  ;; (print nth_val)
-  (if (= nth_val 1)
-      (return-from nth_list target))
-  (let ((counter 1))
-    (loop for el in target
-      do  (if (listp el)
-            (setq counter (1+ counter)))
-          (if (= counter nth_val)
-            (return-from nth_list el)))))
-
-(defun random_from_cdr (subject)
-  "Get a random element that is not the first in the list"
-  (let ((nth_val (random (length subject))))
-    (if (<= nth_val 0)
-      (setf nth_val (1+ nth_val)))
-    (nth nth_val subject)))
-
-(defun test_cross (parent_1 parent_2)
-  ;; (print "test_cross")
-  (let ((n_sub (random_from_cdr parent_2))
-        (nth_val (random (length parent_1)))
-        (n_kid (copy-tree parent_1)))
-      (if (<= nth_val 0)
-        (setf nth_val (1+ nth_val)))
-      (setf (nth nth_val n_kid) n_sub)
-      n_kid))
-
-(defun deep-copy (source)
-  "Get a deep copy of the given structure"
-  (write "deep-copy")
-  (cond ((not (listp source)) source)
-        (T (let ((left (deep-copy (car source)))
-                 (right (deep-copy (cdr source))))
-              (cons left right)))))
-
-(defun cross (source spot n_sub)
-  "Cross the source expression with a new sub-expression at the spot"
-  (cond ((not (listp source)) source)
-        ((eq source spot) n_sub)
-        (T (let ((left (cross (car source) spot n_sub))
-                 (right (cross (cdr source) spot n_sub)))
-              (cons left right)))))
-
 (defun get_crossed (parent_1 parent_2)
-  ;; (print "get_crossed")
-  ;; (print parent_1)
-  ;; (print parent_2)
+  "Get a new kid that is a crossed version of the two parents"
   (let ((pt_1 (random_tree_cell parent_1))
         (pt_2 (random_tree_cell parent_2)))
-    ;; (print pt_1)
-    ;; (print pt_2)
     (make_kid parent_1 pt_1 pt_2)))
-  ;; (test_cross parent_1 parent_2))
-
-(defun test-cross ()
-  "test function to view the crossover of random expressions"
-  (let* ((pop-test (init-pop))
-         (parent_1 (nth (random (length pop-test)) pop-test))
-         (parent_2 (nth (random (length pop-test)) pop-test)))
-      (print (crossover parent_1 parent_2))))
 
 (defun new_kid (parent_1 parent_2)
   "Create a new kid and randomly apply mutation"
   (let ((kid (get_crossed parent_1 parent_2)))
     (loop for i upto (1+ (random mutation_rate))
-      do (setf kid (test_mutate kid)))
-    ;(setf kid (test_mutate kid))
+      do (setf kid (mutate_critter kid))) ; randomly mutate up to the mutation rate value
+    (setf kid (fix_expression kid)) ; fix the expression
     kid))
 
 (defun display_pop_extremes (scored_pop)
+  "Print the best and worst members of the given scored and sorted population"
   (print "Best/Worst")
   (print (car scored_pop))
   (print (last scored_pop)))
 
 (defun display_gen_average (scored_pop)
+  "Print the average score of the given scored population"
   (print "Average Score")
   (let ((summed_scores 0)
         (expr_score 0))
@@ -436,8 +329,9 @@
           append (list expr) into top_xyz))
       top_xyz))
 
-(defun test_fun ()
-  "Test version of genetic programming main function"
+(defun run_gp_experiment ()
+  "Genetic programming main function which attempts to form expressions modeling a 3D surface,
+   over the course of 50 generations"
   (let ((pop-curr (init-pop))
         (pop-next '())
         (parent_1 nil)
@@ -450,14 +344,10 @@
       do (incf generation-count)  ; increment generation counter
          (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))  ; score population, sort by scores
          (push (car pop-scored) most-fit) ; save most fit
-        ;;  (setq pop-top (get_pop_from_scored pop-scored)) 
          (format T "Generation ~D" generation-count)
-         (display_pop_extremes pop-scored)
+         (display_pop_extremes pop-scored)  ; display generation data
          (display_gen_average pop-scored)
-        ;;  (setq pop-top (subseq pop-top 0 (floor (length pop-top) 2)))
-        (setq pop-top (get_pop_from_scored (choose_parent_pool pop-scored)))
-        ;;  (print "expressions")
-        ;;  (print pop-scored)
+        (setq pop-top (get_pop_from_scored (choose_parent_pool pop-scored)))  ; get parent pool
          (setq pop-next '())  ; start with empty new pop
          (loop while (< (+ (length pop-next) 1) pop-size)
             do  (setf parent_1 (nth (random (length pop-top)) pop-top)) ; create two children 
@@ -469,3 +359,5 @@
           (setq pop-curr pop-next)) ; set next pop as current pop
       (print "best expressions:")
       (print most-fit)))
+
+(run_gp_experiment)   ; run main on execute
