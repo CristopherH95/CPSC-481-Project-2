@@ -7,7 +7,7 @@ Written by:
 
 Contact:
 	cristopherh@csu.fullerton.edu
-	2012suyash93@gmail.com
+	suyash.vardhansingh@csu.fullerton.edu
 
 Class:
 	CPSC-481-03

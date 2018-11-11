@@ -1,6 +1,6 @@
 ;;;; project2.lisp
 ;;;; Written by: Cristopher Hernandez & Suyash Singh
-;;;; Contact: cristopherh@csu.fullerton.edu, 2012suyash93@gmail.com
+;;;; Contact: cristopherh@csu.fullerton.edu, suyash.vardhansingh@csu.fullerton.edu
 ;;;; Defines helper functions and the main function for running a 50 generation
 ;;;; genetic programming algorithm for modeling a 3D surface.
 
