@@ -39,14 +39,11 @@
 
 ;;; PROVIDED HELPER FUNCTIONS ;;;
 
-(defun flatten (obj)
-  (do* ((result (list obj))
-        (node result))
-       ((null node) (delete nil result))
-    (cond ((consp (car node))
-           (when (cdar node) (push (cdar node) (cdr node)))
-           (setf (car node) (caar node)))
-          (t (setf node (cdr node))))))
+(defun flatten (li)
+  "Flatten a multi-dimensional list"
+  (cond ((null li) nil)
+        ((atom li) (list li))
+        (T (loop for el in li appending (flatten el)))))
 
 (defun tree_nth_cell (rnth rtree)
   "Return the DFS N-th cell in the given tree: 1-based."
@@ -108,18 +105,29 @@
                 (- rnth size1) ;; Account for skipping car subtree.
                 (cdr rtree))))))))) ;; Skip car subtree.
 
-(defun random_tree_cell (rtree)
- "Return random cell in the tree."
-  (setf rtree (flatten rtree))
-  ;(write "TREE:")
-  ;(write rtree)
-  ;(terpri)
- (let* ((size (cell_count rtree))
- (rx (1+ (random (1- size)))) ;; Avoid 1st cell (the whole tree).
- (nth (1+ rx)) ;; Incr cuz our fcn is 1-based, not 0-based.
- (spot (tree_nth_cell nth rtree)))
- ;; (print (list :dbg size nth spot))
- spot))
+;; (defun random_tree_cell (rtree)
+;;  "Return random cell in the tree."
+;;   (setf rtree (flatten rtree))
+;;   ;(write "TREE:")
+;;   ;(write rtree)
+;;   ;(terpri)
+;;  (let* ((size (cell_count rtree))
+;;  (rx (1+ (random (1- size)))) ;; Avoid 1st cell (the whole tree).
+;;  (nth (1+ rx)) ;; Incr cuz our fcn is 1-based, not 0-based.
+;;  (spot (tree_nth_cell nth rtree)))
+;;  ;; (print (list :dbg size nth spot))
+;;  spot))
+
+(defun random-tree-cell (rtree)  
+  "Return random cell in the tree, but not the whole tree."  
+  (let* ((size (cell-count rtree))         
+    (rx (1+ (random (1- size)))) 
+    ;; Avoid 1st cell (the whole tree).         
+    (nth (1+ rx)) 
+    ;; Incr cuz our fcn is 1-based, not 0-based.         
+    (spot (tree-nth-cell nth rtree)))    
+    ;; (print (list :dbg size nth spot))   
+     spot)) 
 
 (defun pop_fitness ( rpop ) ;; Pop is a population.
  "Create Pop-Scored pairs (Score Critter) given Pop list of critters."
@@ -135,7 +143,6 @@
     ((not (listp rt)) 0)
     (t (let ((cc (length rt)))
       (+ cc (apply #'+ (mapcar #'cell_count rt)))))))
-
 
 (defun make_kid (rmom rtgt rnew)
   "Return kid: copy of mom with tgt cell replaced by given new cell or NIL."
@@ -443,7 +450,7 @@
       do (incf generation-count)  ; increment generation counter
          (setq pop-scored (safe_sort_scored_pop (pop_fitness pop-curr)))  ; score population, sort by scores
          (push (car pop-scored) most-fit) ; save most fit
-         (setq pop-top (get_pop_from_scored pop-scored))  ; take top 50% 
+        ;;  (setq pop-top (get_pop_from_scored pop-scored)) 
          (format T "Generation ~D" generation-count)
          (display_pop_extremes pop-scored)
          (display_gen_average pop-scored)
