@@ -32,6 +32,13 @@ Build:
 Installation:
 	files list:
 		project1.lisp
+		
+Other Files:
+	average_graph.png - generated graph of average scores over 50 generations
+	best_graph.png - generated graph of best scores over 50 generations
+	wors_graph.png - generated graph of worst scores over 50 generations
+	testoutput.txt - raw output from generated data
+	test_data.xlsx - excel formatted data
 
 Setup:
 	This solution was written and tested with GNU Common Lisp for Windows.
