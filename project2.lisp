@@ -29,7 +29,7 @@
                     '(-5 3 -7 -24)
                     '(-6 -5 9 -18)
                     '(1 0 2 2)))
-(setq mutation_rate 75)
+(setq mutation_rate 7)
 (setq vars '(x y z))
 (setq nums '(-9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 8 9))
 (setq ops '(+ - *))
@@ -137,7 +137,6 @@
       (+ cc (apply #'+ (mapcar #'cell_count rt)))))))
 
 
-
 (defun make_kid (rmom rtgt rnew)
   "Return kid: copy of mom with tgt cell replaced by given new cell or NIL."
   (if (not (and rmom rtgt rnew
@@ -194,6 +193,21 @@
             (setf (nth change_pos new_critter) curnum))) ;Set the new operand
     (return-from mutate_critter new_critter) ;Return the resulting new critter
     )
+
+(defun test_mutate (critter)
+  "Randomly mutate an element (including sublist elements) in a given critter"
+  ;; (print "mutating")
+  ;; (print critter)
+  (let ((new_critter (copy-list critter)) ; copy critter
+        (change_pos (random (length critter)))) ; get change pos
+    (cond 
+      ((= change_pos 0) (setf (nth change_pos new_critter) (random-el ops)))  ; change pos is start, so only ops allowed
+      ((listp (nth change_pos new_critter)) ; change pos is a list, so recurse
+        (setf (nth change_pos new_critter) (test_mutate (nth change_pos new_critter))))
+      (T (if (< (random 10) 4)  ; 50% chance to change to a random variable or number
+            (setf (nth change_pos new_critter) (random-el vars))
+          (setf (nth change_pos new_critter) (random-el nums)))))
+    new_critter)) ; return new critter
 
 (defun create_random_child (passed)
     "Create a child at random"
@@ -256,9 +270,9 @@
                 do (setf use-var (random 10))
                 do (cond
                         ((< (length expr) 1) (setf expr-piece (random-el ops))) ; only first elements are operators 
-                        ((and (<= make-sub 4) (< sub-count max-sub))    ; 50% chance to insert sub-list
+                        ((and (<= make-sub 3) (< sub-count max-sub))    ; 40% chance to insert sub-list
                             (setf expr-piece (gen-expr max-len max-sub (+ sub-count 1))))
-                        ((<= use-var 4)     ; 50% chance to insert a variable
+                        ((<= use-var 5)     ; 50% chance to insert a variable
                             (setf expr-piece (random-el vars)))
                         (T                  ; default insert a number
                             (setf expr-piece (random-el nums))))
@@ -366,7 +380,9 @@
 (defun new_kid (parent_1 parent_2)
   "Create a new kid and randomly apply mutation"
   (let ((kid (get_crossed parent_1 parent_2)))
-    (setf kid (mutate_critter kid))
+    (loop for i upto (1+ (random mutation_rate))
+      do (setf kid (test_mutate kid)))
+    ;(setf kid (test_mutate kid))
     kid))
 
 (defun display_pop_extremes (scored_pop)
@@ -384,6 +400,34 @@
       finally (print (handler-case ; if score is too high for float representation, leave as fraction
                         (float (/ summed_scores (length scored_pop)))
                         (floating-point-overflow () (/ summed_scores (length scored_pop))))))))
+
+(defun nested_member (t_el li)
+  "Check if a given element exists in a list at any depth"
+  (cond
+    ((null li) nil)
+    ((equal t_el (car li)) li)
+    ((listp (car li)) (or (nested_member t_el (car li))
+                          (nested_member t_el (cdr li))))
+    (T (nested_member t_el (cdr li)))))
+
+(defun check_scored_expr (scored_expr)
+  "Check that a given expression contains the X Y Z variables"
+  (let ((expr (nth 1 scored_expr)))
+    (and (nested_member 'x expr) (nested_member 'y expr) (nested_member 'z expr))))
+
+(defun choose_parent_pool (scored_pop)
+  "Get a pool of parent expressions from a scored population, prioritize those with
+   the variables X Y Z in them"
+  (let* ((has_xyz (remove-if #'check_scored_expr scored_pop))
+        (not_xyz (remove-if-not #'check_scored_expr scored_pop))
+        (quarter_pop (floor (length scored_pop) 4))
+        (top_xyz (subseq has_xyz 0 (floor (length has_xyz) 2))))
+      (if (not (>= (length top_xyz) quarter_pop))
+        (loop for expr in not_xyz
+          do (if (>= (length top_xyz) quarter_pop)
+                (return-from choose_parent_pool top_xyz))
+          append (list expr) into top_xyz))
+      top_xyz))
 
 (defun test_fun ()
   "Test version of genetic programming main function"
@@ -403,9 +447,10 @@
          (format T "Generation ~D" generation-count)
          (display_pop_extremes pop-scored)
          (display_gen_average pop-scored)
-         (setq pop-top (subseq pop-top 0 (floor (length pop-top) 2)))
-         (print "expressions")
-         (print pop-scored)
+        ;;  (setq pop-top (subseq pop-top 0 (floor (length pop-top) 2)))
+        (setq pop-top (get_pop_from_scored (choose_parent_pool pop-scored)))
+        ;;  (print "expressions")
+        ;;  (print pop-scored)
          (setq pop-next '())  ; start with empty new pop
          (loop while (< (+ (length pop-next) 1) pop-size)
             do  (setf parent_1 (nth (random (length pop-top)) pop-top)) ; create two children 
