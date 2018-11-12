@@ -31,7 +31,7 @@ Build:
 
 Installation:
 	files list:
-		project1.lisp
+		project2.lisp
 		
 Other Files:
 	average_graph.png - generated graph of average scores over 50 generations
